@@ -97,9 +97,9 @@ def detect(save_img=False):
     half = device.type != 'cpu'  # half precision only supported on CUDA 原始代码,cpu用float32,gpu用float16
     # half = False  # 强制禁用float16推理, 20和30系列显卡有tensor cores float16, 10系列卡不开cudnn.benchmark速度反而降
     # Load model
-    model = attempt_load(weights, map_location=device)  # load FP32 model
-    stride = int(model.stride.max())  # model stride
-    imgsz = check_img_size(imgsz, s=stride)  # check img_size
+    model = attempt_load(weights, map_location=device)  # load FP32 model 加载模型
+    stride = int(model.stride.max())  # model strides 模型最大步数
+    imgsz = check_img_size(imgsz, s=stride)  # check img_size 
     if half:
         model.half()  # to FP16
 
@@ -109,7 +109,7 @@ def detect(save_img=False):
         modelc = load_classifier(name='resnet101', n=2)  # initialize
         modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
 
-    # Set Dataloader
+    # Set Dataloader 数据加载
     vid_path, vid_writer, s_writer = None, None, None
     if webcam:
         view_img = check_imshow()
@@ -121,6 +121,7 @@ def detect(save_img=False):
         cudnn.benchmark = False
         dataset = LoadImages(source, img_size=imgsz, stride=stride)  # 跑的是这个
 
+    
     if opt.submit or opt.save_as_video:  # 提交和做视频必定是同尺寸
         cudnn.benchmark = True
         
@@ -134,21 +135,21 @@ def detect(save_img=False):
 
     # Run inference
     if device.type != 'cpu':
-        model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
+        model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once 运行一次
     t0 = time.time()
-    for path, img, im0s, vid_cap in dataset:
-        img = torch.from_numpy(img).to(device)
+    for path, img, im0s, vid_cap in dataset:  #加载的图片数据
+        img = torch.from_numpy(img).to(device) #numpy数据转换成 tensor
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
-        if img.ndimension() == 3:
-            img = img.unsqueeze(0)
+        if img.ndimension() == 3:  #返回tensor的维度（整数）
+            img = img.unsqueeze(0) #unsqueeze(0)后就会在0的位置加了一维就变成一行三列（1,3） unsqueeze主要起到升维的作用，后续图像处理可以更好地进行批操作
 
         # Inference
         #上下文管理器中执行此操作 不记录操作，将梯度设置为零 
         # 否则，我们的梯度会记录所有已发生操作的运行记录即loss.backward()将梯度添加到已存储的内容中，而不是替换它们）
         with torch.no_grad():
             t1 = time_synchronized()
-            out = model(img, augment=opt.augment)
+            out = model(img, augment=opt.augment) #模型加载图片计算输出数据
             pred = out[0][0] # 目标检测结果
             seg = out[1]  # [0]分割结果
         # Apply NMS 非最大值抑制。 主要作用赛选目标框
